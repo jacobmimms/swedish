@@ -1,12 +1,7 @@
+import Dictionary from "./dictionary";
 import { promises as fs } from "fs";
 
-export default async function Home() {
-  // async function loadTrie() {
-  //   let trie = await fs.readFile(process.cwd() + "/public/trie.json", "utf-8");
-  //   trie = JSON.parse(trie);
-  //   return trie;
-  // }
-
+export default async function Page() {
   async function loadXML() {
     let xml = await fs.readFile(
       process.cwd() + "/public/folkets_sv_en_public.xdxf",
@@ -22,10 +17,5 @@ export default async function Home() {
     return <h1>Loading...</h1>;
   }
 
-  return (
-    <>
-      <div>home page</div>
-      {/* <Dictionary xml={xml} /> */}
-    </>
-  );
+  return <Dictionary xml={xml} />;
 }

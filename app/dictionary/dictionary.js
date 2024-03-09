@@ -3,9 +3,11 @@ import { useEffect, useState, useRef } from "react";
 import { faEarListen } from "@fortawesome/free-solid-svg-icons";
 import { faBook } from "@fortawesome/free-solid-svg-icons";
 import { faBookOpen } from "@fortawesome/free-solid-svg-icons";
-import { db } from "./db";
-import { parseXML } from "./parser";
+import { db } from "../db";
+import { parseXML } from "../parser";
 import IconButton from "@/app/comps/IconButton";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 function decodeHtml(html) {
   var txt = document.createElement("textarea");
@@ -15,8 +17,10 @@ function decodeHtml(html) {
 
 export default function Dictionary({ xml }) {
   const [results, setResults] = useState([]);
+  const searchParams = useSearchParams("search");
 
   let timer;
+  const search = searchParams.get("search");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -32,7 +36,23 @@ export default function Dictionary({ xml }) {
     };
 
     fetchData();
+    if (search) {
+      Search(search);
+    }
   }, []);
+
+  useEffect(() => {
+    if (search) {
+      Search(search);
+    }
+  }, [search]);
+
+  function Search(term) {
+    searchEntries(term).then((results) => {
+      setResults(results);
+    });
+    document.getElementById("search-input").value = term;
+  }
 
   async function searchEntries(query) {
     return await db.entries.where("word").startsWithIgnoreCase(query).toArray();
@@ -46,6 +66,7 @@ export default function Dictionary({ xml }) {
       clearTimeout(timer);
       console.log("cleared");
     }
+
     timer = setTimeout(() => {
       if (term === "") {
         setResults([]);
@@ -61,10 +82,8 @@ export default function Dictionary({ xml }) {
   return (
     <div className="h-[calc(100vh-48px)] rounded-md flex flex-col overflow-scroll">
       <div className="flex flex-row gap-2 p-2 rounded-lg bg-sky-100 shadow-md shadow-gray-300 max-h-[10%] mb-1">
-        {/* <h1 className="text-sky-800 flex items-center justify-center hover:bg-sky-200  hover:cursor-pointer rounded-md p-2">
-          <FontAwesomeIcon height={20} width={20} icon={faBook} />
-        </h1> */}
         <input
+          id="search-input"
           type="text"
           placeholder="Search"
           onChange={handleSearch}
@@ -76,6 +95,20 @@ export default function Dictionary({ xml }) {
           <Entry key={result?.definition + index.toString()} result={result} />
         ))}
       </div>
+    </div>
+  );
+}
+
+function LinkString({ string }) {
+  // takes a string of text, and returns a component where each word in the string is a link to a definition
+  let words = string.split(" ");
+  return (
+    <div>
+      {words.map((word, index) => (
+        <Link key={index} href={`/dictionary?search=${word}`}>
+          {word}{" "}
+        </Link>
+      ))}
     </div>
   );
 }
@@ -126,10 +159,20 @@ function Entry({ result }) {
         />
       </div>
       {open && (
-        <ExampleList
-          se_examples={result.examples_se}
-          en_examples={result.examples_en}
-        />
+        <>
+          {result?.definition && (
+            <div className="p-2">
+              Swedish definition:
+              <span className="bg-gray-100 rounded-md p-1">
+                {<LinkString string={decodeHtml(result.definition)} />}
+              </span>
+            </div>
+          )}
+          <ExampleList
+            se_examples={result.examples_se}
+            en_examples={result.examples_en}
+          />
+        </>
       )}
       <hr className="" />
     </div>
