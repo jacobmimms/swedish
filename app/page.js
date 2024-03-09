@@ -25,10 +25,8 @@ export default async function Home() {
   }
 
   return (
-    <div className="w-full">
-      <h1>Hej, världen!</h1>
-      {/* <Search trie={trie} /> */}
+    <>
       <Dictionary xml={xml} />
-    </div>
+    </>
   );
 }
