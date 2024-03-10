@@ -52,6 +52,9 @@ export default function Dictionary({ xml }) {
       setResults(results);
     });
     document.getElementById("search-input").value = term;
+    // set the 'search' param in the url
+
+    window.history.pushState({}, "", `/dictionary?search=${term}`);
   }
 
   async function searchEntries(query) {
@@ -64,7 +67,6 @@ export default function Dictionary({ xml }) {
 
     if (timer) {
       clearTimeout(timer);
-      console.log("cleared");
     }
 
     timer = setTimeout(() => {
@@ -72,10 +74,7 @@ export default function Dictionary({ xml }) {
         setResults([]);
         return;
       }
-      searchEntries(term).then((results) => {
-        console.log(results);
-        setResults(results);
-      });
+      Search(term);
     }, 300);
   }
 
@@ -100,13 +99,21 @@ export default function Dictionary({ xml }) {
 }
 
 function LinkString({ string }) {
-  // takes a string of text, and returns a component where each word in the string is a link to a definition
   let words = string.split(" ");
+
+  function cleanWord(word) {
+    return word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "");
+  }
+
   return (
-    <div>
+    <div className="p-1 mx-2 bg-sky-100 rounded-md">
       {words.map((word, index) => (
-        <Link key={index} href={`/dictionary?search=${word}`}>
-          {word}{" "}
+        <Link
+          className="appearance-none"
+          key={index}
+          href={`/dictionary?search=${cleanWord(word)}`}
+        >
+          {`${word} `}
         </Link>
       ))}
     </div>
@@ -124,19 +131,19 @@ function Entry({ result }) {
   };
 
   return (
-    <div>
+    <div className="">
       {result?.iref && <audio ref={audioRef} src={result.iref} />}
 
       <div className={`rounded-md flex flex-row grow gap-2 p-2 w-full`}>
         <IconButton
           height={20}
           icon={open ? faBookOpen : faBook}
-          className="text-sky-800 flex items-center justify-center hover:bg-sky-200  hover:cursor-pointer rounded-md p-2 h-8 w-8"
+          className="text-sky-800 flex items-center justify-center hover:bg-sky-200  hover:cursor-pointer rounded-md p-2 h-8 w-8 max-w-8 max-h-8"
           onClick={() => setOpen(!open)}
         />
 
         <div className="grid grid-cols-2 justify-center gap-1 grow">
-          <span className="w-full rounded-md hyphens-auto break-words bg-gray-100 p-1">
+          <span className="w-full hyphens-auto break-words flex items-start bg-slate-50 rounded-md p-1">
             {decodeHtml(result.word)}
           </span>
           <div className="flex flex-col gap-1 justify-center">
@@ -161,13 +168,9 @@ function Entry({ result }) {
       {open && (
         <>
           {result?.definition && (
-            <div className="p-2">
-              Swedish definition:
-              <span className="bg-gray-100 rounded-md p-1">
-                {<LinkString string={decodeHtml(result.definition)} />}
-              </span>
-            </div>
+            <LinkString string={decodeHtml(result.definition)} />
           )}
+
           <ExampleList
             se_examples={result.examples_se}
             en_examples={result.examples_en}
