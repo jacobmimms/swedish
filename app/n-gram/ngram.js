@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { db } from "@/app/db";
 export default function Ngram({ ngrams }) {
   const [index, setIndex] = useState(0);
@@ -111,7 +110,6 @@ function HoverTerm({ term, ...props }) {
       .toArray()
       .then((result) => {
         if (result.length > 0) {
-          console.log(result);
           setDefinition(result[0].translation); // Ensure at least one result exists
         }
       })
@@ -120,7 +118,6 @@ function HoverTerm({ term, ...props }) {
 
   function handleIsHovering(e) {
     // e.preventDefault();
-    console.log(e.type, term, definition, hovering);
     if (e.type === "mouseleave") {
       clearTimeout(timer);
       setHovering(false);

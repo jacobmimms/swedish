@@ -42,9 +42,7 @@ export default function Search({ trie }) {
       return ["No words found"];
     }
     if (node["is_word"]) {
-      // parse ndoe["is_word"]
       let row = JSON.parse(node["is_word"]);
-      console.log(row);
       words.push(row);
     }
     for (const char in node) {
@@ -63,7 +61,6 @@ export default function Search({ trie }) {
 
     if (timer) {
       clearTimeout(timer);
-      console.log("cleared");
     }
     timer = setTimeout(() => {
       if (prefix === "") {

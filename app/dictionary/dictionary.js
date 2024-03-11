@@ -1,31 +1,43 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
-import { faEarListen } from "@fortawesome/free-solid-svg-icons";
-import { faBook } from "@fortawesome/free-solid-svg-icons";
-import { faBookOpen } from "@fortawesome/free-solid-svg-icons";
-import { db } from "../db";
-import { parseXML } from "../parser";
-import IconButton from "@/app/comps/IconButton";
+import { useEffect, useState, useRef, Suspense } from "react";
+
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-function decodeHtml(html) {
-  var txt = document.createElement("textarea");
-  txt.innerHTML = html;
-  return txt.value;
-}
+import { faEarListen } from "@fortawesome/free-solid-svg-icons";
+import { faBook } from "@fortawesome/free-solid-svg-icons";
+import { faBookOpen } from "@fortawesome/free-solid-svg-icons";
 
-export default function Dictionary({ xml }) {
+import { db } from "@/app/db";
+import { parseXML } from "@/app/parser";
+import { decodeHtml } from "@/app/client_utils";
+import { searchTrie, parseNode } from "@/app/trie/utils";
+import { getEntry, searchEntries } from "@/app/dictionary/utils";
+
+import IconButton from "@/app/comps/IconButton";
+import TT from "@/app/comps/TT";
+import TranslateLine from "@/app/comps/TranslateLine";
+
+export default function Dictionary({ xml, trie }) {
   const [results, setResults] = useState([]);
   const searchParams = useSearchParams("search");
-
-  let timer;
   const search = searchParams.get("search");
+  const searchTimer = useRef(null);
+
+  function withTimeout(func, ms) {
+    return function (...args) {
+      if (searchTimer.current) {
+        clearTimeout(searchTimer.current);
+      }
+      searchTimer.current = setTimeout(() => {
+        func(...args);
+      }, ms);
+    };
+  }
 
   useEffect(() => {
     const fetchData = async () => {
       const count = await db.entries.count();
-      console.log(count);
       if (count === 0) {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xml, "text/xml");
@@ -37,46 +49,46 @@ export default function Dictionary({ xml }) {
 
     fetchData();
     if (search) {
-      Search(search);
+      searchDict(search);
     }
   }, []);
 
   useEffect(() => {
     if (search) {
-      Search(search);
+      searchDict(search);
     }
   }, [search]);
 
-  function Search(term) {
-    searchEntries(term).then((results) => {
-      setResults(results);
-    });
+  async function searchDict(term) {
+    if (term === "" || term.length < 2) {
+      setResults([]);
+      window.history.pushState({}, "", `/dictionary?search=${term}`);
+      return;
+    }
+    const dictResults = await searchEntries(term);
+    let node = await searchTrie(trie, term);
+    console.log(dictResults, "dict res");
+
+    if (node?.word && dictResults.length === 0) {
+      let entry = await getEntry(node.word.stem);
+      if (entry) {
+        setResults(entry);
+      }
+    } else {
+      setResults(dictResults);
+    }
+
     document.getElementById("search-input").value = term;
-    // set the 'search' param in the url
-
     window.history.pushState({}, "", `/dictionary?search=${term}`);
-  }
-
-  async function searchEntries(query) {
-    return await db.entries.where("word").startsWithIgnoreCase(query).toArray();
   }
 
   function handleSearch(e) {
     let term = e.target.value;
     term = term.trim();
-
-    if (timer) {
-      clearTimeout(timer);
-    }
-
-    timer = setTimeout(() => {
-      if (term === "") {
-        setResults([]);
-        return;
-      }
-      Search(term);
-    }, 300);
+    searchDict(term);
   }
+
+  const timedSearch = withTimeout(handleSearch, 300);
 
   return (
     <div className="h-[calc(100vh-48px)] rounded-md flex flex-col overflow-scroll">
@@ -85,7 +97,7 @@ export default function Dictionary({ xml }) {
           id="search-input"
           type="text"
           placeholder="Search"
-          onChange={handleSearch}
+          onChange={timedSearch}
           className=" px-1 rounded-md w-full"
         />
       </div>
@@ -94,28 +106,6 @@ export default function Dictionary({ xml }) {
           <Entry key={result?.definition + index.toString()} result={result} />
         ))}
       </div>
-    </div>
-  );
-}
-
-function LinkString({ string }) {
-  let words = string.split(" ");
-
-  function cleanWord(word) {
-    return word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "");
-  }
-
-  return (
-    <div className="p-1 mx-2 bg-sky-100 rounded-md">
-      {words.map((word, index) => (
-        <Link
-          className="appearance-none"
-          key={index}
-          href={`/dictionary?search=${cleanWord(word)}`}
-        >
-          {`${word} `}
-        </Link>
-      ))}
     </div>
   );
 }
@@ -135,12 +125,14 @@ function Entry({ result }) {
       {result?.iref && <audio ref={audioRef} src={result.iref} />}
 
       <div className={`rounded-md flex flex-row grow gap-2 p-2 w-full`}>
-        <IconButton
-          height={20}
-          icon={open ? faBookOpen : faBook}
-          className="text-sky-800 flex items-center justify-center hover:bg-sky-200  hover:cursor-pointer rounded-md p-2 h-8 w-8 max-w-8 max-h-8"
-          onClick={() => setOpen(!open)}
-        />
+        <TT text={open ? "close" : "open"}>
+          <IconButton
+            height={20}
+            icon={open ? faBookOpen : faBook}
+            className="text-sky-800 flex items-center justify-center hover:bg-sky-200  hover:cursor-pointer rounded-md p-2 h-8 w-8 max-w-8 max-h-8"
+            onClick={() => setOpen(!open)}
+          />
+        </TT>
 
         <div className="grid grid-cols-2 justify-center gap-1 grow">
           <span className="w-full hyphens-auto break-words flex items-start bg-slate-50 rounded-md p-1">
@@ -166,16 +158,16 @@ function Entry({ result }) {
         />
       </div>
       {open && (
-        <>
+        <div className="p-2 flex flex-col gap-2">
+          Swedish definition:
           {result?.definition && (
-            <LinkString string={decodeHtml(result.definition)} />
+            <TranslateLine line={decodeHtml(result.definition)} />
           )}
-
           <ExampleList
             se_examples={result.examples_se}
             en_examples={result.examples_en}
           />
-        </>
+        </div>
       )}
       <hr className="" />
     </div>
@@ -189,7 +181,7 @@ function ExampleList({ se_examples, en_examples }) {
   }
 
   return (
-    <div className="flex flex-col gap-2 p-2">
+    <div className="flex flex-col gap-2">
       {Array.from({ length: len }).map((_, index) => (
         <div key={index} className="flex flex-col gap-2 items-center  w-full">
           <div className="flex flex-row gap-1 w-full">
