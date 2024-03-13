@@ -1,17 +1,23 @@
 import { promises as fs } from "fs";
 
-export async function loadXML() {
-  let xml = await fs.readFile(
-    process.cwd() + "/public/folkets_sv_en_public.xdxf",
-    "utf-8"
-  );
+export async function loadXmlDict(filename) {
+  let xml;
+  try {
+    xml = await fs.readFile(process.cwd() + `/public/${filename}`, "utf-8");
+  } catch (err) {
+    console.error(`Error loading XML dictionary ${filename}`, err);
+  }
   return xml;
 }
 
-export async function loadTrie() {
-  let trie = await fs.readFile(process.cwd() + "/public/trie.json", "utf-8");
-  // parse the trie
-  return JSON.parse(trie);
+export async function loadFile(filename) {
+  let file;
+  try {
+    file = await fs.readFile(process.cwd() + `/public/${filename}`, "utf-8");
+  } catch (err) {
+    console.error(`Error loading file ${filename}`, err);
+  }
+  return file;
 }
 
 export function decodeHtml(html) {

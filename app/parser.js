@@ -1,7 +1,7 @@
 "use client";
 import { db } from "./db";
 
-export async function parseXML(xmlDoc) {
+export async function setDbFromXml(xml) {
   // for each <ar> in the xml, parse the data and store it in the database
   // item : {
   //     word: string (required),
@@ -22,7 +22,8 @@ export async function parseXML(xmlDoc) {
   //     entailment: list of strings (optional),
   //     relevance: list of strings (optional),
   // }
-
+  const parser = new DOMParser();
+  let xmlDoc = parser.parseFromString(xml, "text/xml");
   let entries = xmlDoc.getElementsByTagName("ar");
   let wordList = [];
   let count = 0;
@@ -139,3 +140,35 @@ export async function parseXML(xmlDoc) {
 
 // reference to XML tags
 // https://github.com/soshial/xdxf_makedict/tree/master/format_standard
+
+export async function parseDf(df) {
+  let dfList = df.split("\n");
+  let dfObjects = [];
+  // word_form,part_of_speech,lemgram,compound,raw_frequency,relative_frequency,stem
+  for (let line of dfList) {
+    let [
+      word_form,
+      part_of_speech,
+      lemgram,
+      compound,
+      raw_frequency,
+      relative_frequency,
+      stem,
+    ] = line.split(",");
+    dfObjects.push({
+      word_form: word_form,
+      part_of_speech: part_of_speech,
+      lemgram: lemgram,
+      compound: compound,
+      raw_frequency: raw_frequency,
+      relative_frequency: relative_frequency,
+      stem: stem,
+    });
+  }
+  try {
+    await db.se_df.bulkPut(dfObjects);
+    console.log("Database populated with se_df entries");
+  } catch (error) {
+    console.error("Bulk operation error:", error);
+  }
+}

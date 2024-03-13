@@ -1,28 +1,30 @@
 "use client";
-import { useEffect, useState, useRef, Suspense } from "react";
+import { useEffect, useState, useRef } from "react";
 
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
 
 import { faEarListen } from "@fortawesome/free-solid-svg-icons";
 import { faBook } from "@fortawesome/free-solid-svg-icons";
 import { faBookOpen } from "@fortawesome/free-solid-svg-icons";
 
-import { db } from "@/app/db";
-import { parseXML } from "@/app/parser";
 import { decodeHtml } from "@/app/client_utils";
-import { searchTrie, parseNode } from "@/app/trie/utils";
 import { getEntry, searchEntries } from "@/app/dictionary/utils";
 
 import IconButton from "@/app/comps/IconButton";
 import TT from "@/app/comps/TT";
 import TranslateLine from "@/app/comps/TranslateLine";
 
-export default function Dictionary({ xml, trie }) {
+export default function Dictionary({ xml, se_df }) {
   const [results, setResults] = useState([]);
   const searchParams = useSearchParams("search");
   const search = searchParams.get("search");
   const searchTimer = useRef(null);
+
+  useEffect(() => {
+    if (search) {
+      searchDict(search);
+    }
+  }, [search]);
 
   function withTimeout(func, ms) {
     return function (...args) {
@@ -35,51 +37,18 @@ export default function Dictionary({ xml, trie }) {
     };
   }
 
-  useEffect(() => {
-    const fetchData = async () => {
-      const count = await db.entries.count();
-      if (count === 0) {
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xml, "text/xml");
-        await parseXML(xmlDoc);
-      } else {
-        console.log("Database already populated.");
-      }
-    };
-
-    fetchData();
-    if (search) {
-      searchDict(search);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (search) {
-      searchDict(search);
-    }
-  }, [search]);
-
   async function searchDict(term) {
-    if (term === "" || term.length < 2) {
-      setResults([]);
-      window.history.pushState({}, "", `/dictionary?search=${term}`);
-      return;
-    }
-    const dictResults = await searchEntries(term);
-    let node = await searchTrie(trie, term);
-    console.log(dictResults, "dict res");
-
-    if (node?.word && dictResults.length === 0) {
-      let entry = await getEntry(node.word.stem);
-      if (entry) {
-        setResults(entry);
-      }
-    } else {
-      setResults(dictResults);
-    }
-
     document.getElementById("search-input").value = term;
     window.history.pushState({}, "", `/dictionary?search=${term}`);
+    let newResults;
+    if (term === "" || term.length < 2) {
+      newResults = [];
+      return;
+    } else {
+      const dictResults = await searchEntries(term);
+      newResults = dictResults;
+    }
+    setResults(newResults);
   }
 
   function handleSearch(e) {

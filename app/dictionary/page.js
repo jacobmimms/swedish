@@ -1,14 +1,18 @@
 import Dictionary from "./dictionary";
+import { loadXmlDict, loadFile } from "@/app/server_utils";
+import Loader from "./loader";
 import { Suspense } from "react";
-import { loadXML, loadTrie } from "@/app/server_utils";
+import Loading from "@/app/Loading";
 
 export default async function Page() {
-  let trie = await loadTrie();
-  let xml = await loadXML();
+  let xml = await loadXmlDict("folkets_sv_en_public.xdxf");
+  let se_df = await loadFile("se_df.csv");
 
   return (
-    <Suspense fallback={<h1>Loading...</h1>}>
-      <Dictionary xml={xml} trie={trie} />
-    </Suspense>
+    // <Suspense fallback={<Loading />}>
+    <Loader xml={xml} se_df={se_df}>
+      <Dictionary />
+    </Loader>
+    // </Suspense>
   );
 }

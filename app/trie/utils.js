@@ -1,9 +1,6 @@
 "use client";
 
 export function searchTrie(trie, term) {
-  // return the node of the trie that matches the term
-  // this may contain a word and/or other nodes
-
   for (let i = 0; i < term.length; i++) {
     let char = term.charAt(i);
     if (trie[char]) {
