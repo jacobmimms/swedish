@@ -14,7 +14,7 @@ import IconButton from "@/app/comps/IconButton";
 import TT from "@/app/comps/TT";
 import TranslateLine from "@/app/comps/TranslateLine";
 
-export default function Dictionary({ xml, se_df }) {
+export default function Dictionary() {
   const [results, setResults] = useState([]);
   const searchParams = useSearchParams("search");
   const search = searchParams.get("search");

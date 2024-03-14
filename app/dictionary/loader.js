@@ -1,49 +1,49 @@
 "use client";
-import { useEffect, Suspense } from "react";
+import { useEffect, useState } from "react";
 import Loading from "@/app/Loading";
-import { parseDf, setDbFromXml } from "../parser";
-import { db } from "@/app/db";
+import { loadDf, loadXml } from "../parser";
+import { db, containsData } from "@/app/db";
+import Dexie from "dexie";
 
-export default function Loader({ xml, se_df, children }) {
-  async function checkCreateDict() {
-    let count;
-    try {
-      count = await db.entries.count();
-    } catch (e) {
-      count = 0;
-      console.log("error", e);
+export default function Loader({ xml, df, children }) {
+  const [loaded, setLoaded] = useState(false);
+  const [stages, setStages] = useState({
+    xml_fetched: false,
+    df_fetched: false,
+    xml_loaded: false,
+    df_loaded: false,
+  });
+
+  async function fetchData() {
+    let exits = await dbExists();
+    if (exits) {
+      setLoaded(true);
+      return;
     }
-    console.log("count", count);
-    if (count === 0) {
-      await setDbFromXml(xml);
+    const [dfLoaded, dbLoaded] = await Promise.all([
+      loadDf(df, (bool) => setStages({ ...stages, df_loaded: bool })),
+      loadXml(xml, (bool) => setStages({ ...stages, xml_loaded: bool })),
+    ]);
+
+    if (dfLoaded && dbLoaded) {
+      setLoaded(true);
     } else {
-      console.log("Database already populated.");
+      console.error("Error loading data");
     }
   }
 
-  async function checkCreateDf() {
-    let count;
-    try {
-      count = await db.se_df.count();
-    } catch (e) {
-      count = 0;
-      console.log("error", e);
-    }
-    if (count === 0) {
-      await parseDf(se_df);
-    } else {
-      console.log("Database already populated.");
-    }
+  async function dbExists() {
+    const exits = await containsData();
+    return exits;
   }
 
   useEffect(() => {
-    const fetchData = async () => {
-      await checkCreateDict();
-      await checkCreateDf();
-    };
-
     fetchData();
-  }, []);
+  }, [xml, df]);
 
-  return <Suspense fallback={<Loading />}>{children}</Suspense>;
+  if (loaded) {
+    return <>{children}</>;
+  } else {
+    return <Loading stages={stages} />;
+  }
 }

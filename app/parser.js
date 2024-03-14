@@ -1,7 +1,7 @@
 "use client";
 import { db } from "./db";
 
-export async function setDbFromXml(xml) {
+export async function loadXml(xml, cb) {
   // for each <ar> in the xml, parse the data and store it in the database
   // item : {
   //     word: string (required),
@@ -133,15 +133,19 @@ export async function setDbFromXml(xml) {
   try {
     await db.entries.bulkPut(wordList);
     console.log("Entries stored/updated in IndexedDB");
+    cb(true);
+
+    return true;
   } catch (error) {
     console.error("Bulk operation error:", error);
+    return false;
   }
 }
 
 // reference to XML tags
 // https://github.com/soshial/xdxf_makedict/tree/master/format_standard
 
-export async function parseDf(df) {
+export async function loadDf(df, cb) {
   let dfList = df.split("\n");
   let dfObjects = [];
   // word_form,part_of_speech,lemgram,compound,raw_frequency,relative_frequency,stem
@@ -168,7 +172,11 @@ export async function parseDf(df) {
   try {
     await db.se_df.bulkPut(dfObjects);
     console.log("Database populated with se_df entries");
+    cb(true);
+
+    return true;
   } catch (error) {
     console.error("Bulk operation error:", error);
+    return false;
   }
 }

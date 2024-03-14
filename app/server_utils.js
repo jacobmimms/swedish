@@ -1,15 +1,5 @@
 import { promises as fs } from "fs";
 
-export async function loadXmlDict(filename) {
-  let xml;
-  try {
-    xml = await fs.readFile(process.cwd() + `/public/${filename}`, "utf-8");
-  } catch (err) {
-    console.error(`Error loading XML dictionary ${filename}`, err);
-  }
-  return xml;
-}
-
 export async function loadFile(filename) {
   let file;
   try {
